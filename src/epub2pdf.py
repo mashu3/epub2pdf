@@ -7,7 +7,6 @@ import zipfile
 import argparse
 import warnings
 from bs4 import BeautifulSoup
-from pikepdf import OutlineItem
 
 warnings.filterwarnings('ignore', category=UserWarning)
 from bs4 import XMLParsedAsHTMLWarning
@@ -22,23 +21,20 @@ class EpubToPdfConverter:
 
     def extract_contents(self, epub):
         contents = epub.namelist()
-        page_names = []
-        cover_name = []
-        copyright_name = []
         for item in contents:
             extension = item.split('.')[-1].lower()
-            if extension in ['jpg', 'jpeg', 'png']:
-                page_names.append(item)
-                if re.search(r'cover', item, re.IGNORECASE):
-                    cover_name.append(item)
-                elif re.search(r'copyright', item, re.IGNORECASE):
-                    copyright_name.append(item)
             if extension == 'ncx':
                 ncx_name = item
             if extension == 'opf':
                 opf_name = item
-        page_names = sorted(set(page_names) - set(cover_name) - set(copyright_name))
-        page_names = cover_name + sorted(page_names, key=lambda name: [int(x) if x.isdigit() else x for x in re.compile(r'(\d+)').split(name)]) + copyright_name
+        page_names = []
+        with epub.open(opf_name) as opf:
+            content_opf = opf.read().decode()
+            opf_soup = BeautifulSoup(content_opf, 'xml')
+            for item in opf_soup.find_all('item', {'media-type': 'image/jpeg'}):
+                page_names.append(os.path.join(os.path.dirname(opf_name), item.get('href')))
+            for item in opf_soup.find_all('item', {'media-type': 'image/png'}):
+                page_names.append(os.path.join(os.path.dirname(opf_name), item.get('href')))
         page_items = []
         for page_name in page_names:
             page_items.append(epub.open(page_name))
@@ -106,9 +102,9 @@ class EpubToPdfConverter:
             opf_name = self.extract_contents(epub)[3]
             page_index = self.extract_index(epub, page_names, ncx_name)
             epub_metadata = self.extract_metadata(epub, opf_name)
-            
+
         pdf_obj = io.BytesIO(img2pdf.convert(page_items))
-            
+
         with pikepdf.Pdf.open(pdf_obj) as pdf:
             with pdf.open_metadata(set_pikepdf_as_editor=False) as pdf_metadata:
                 pdf_metadata['dc:title'] = epub_metadata['title'] if epub_metadata['title'] else ''
@@ -119,7 +115,7 @@ class EpubToPdfConverter:
                 pdf_metadata['pdf:Producer'] = ''
             pdf_index = []
             for index in page_index:
-                pdf_index.append(OutlineItem(index[0], index[1]))
+                pdf_index.append(pikepdf.OutlineItem(index[0], index[1]))
             with pdf.open_outline() as outline:
                 outline.root.extend(pdf_index)
             if self.pagelayout is not None:
@@ -138,6 +134,7 @@ class EpubToPdfConverter:
             else:
                 output_path = self.output_path
             pdf.save(output_path, linearize=True)
+        return None
 
 class HelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog, indent_increment=2, max_help_position=6, width=None):
