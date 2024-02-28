@@ -44,15 +44,15 @@ $ pip install .
 ## Examples
 - To convert `my_manga.epub` to `my_manga.pdf` using the default settings:
 
-    `$ python epub2pdf.py my_manga.epub`
+    `$ epub2pdf my_manga.epub`
 
 - To convert `my_manga.epub` to `my_manga_spread.pdf` with a spread view and right binding:
 
-    `$ python epub2pdf.py my_manga.epub -o my_manga_spread.pdf`
+    `$ epub2pdf my_manga.epub -o my_manga_spread.pdf`
 
 - To convert `my_comic.epub` to `my_comic.pdf` with a TwoPage view and left binding:
 
-    `$ python epub2pdf.py my_comic.epub -o my_comic.pdf -p TwoPageLeft -d L2R`
+    `$ epub2pdf my_comic.epub -o my_comic.pdf -p TwoPageLeft -d L2R`
 
 Once the arguments are given, the program will convert the EPUB file to PDF.
 
